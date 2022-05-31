@@ -7,39 +7,66 @@ import 'package:mobile_quran/views/login_page.dart';
 class RegisterPage extends StatefulWidget {
   const RegisterPage({Key? key}) : super(key: key);
   @override
-  _LoginPageState createState() => _LoginPageState();
+  _RegisterPageState createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<RegisterPage> {
+class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _usernameFilter = TextEditingController();
   final TextEditingController _passwordFilter = TextEditingController();
-  final _userFormKey = GlobalKey<FormState>();
   String username = "";
   String password = "";
   bool isRegisterSuccess = true;
 
   late final Box box;
 
-  // _LoginPageState() {
-  //   _usernameFilter.addListener(_usernameListen);
-  //   _passwordFilter.addListener(_passwordListen);
-  // }
-
-  _addUser() async {
-    User newUser = User(
-      username: _usernameFilter.text,
-      password: _passwordFilter.text
-    );
-
-    box.add(newUser);
-    print('User added to database!');
+  _RegisterPageState() {
+    _usernameFilter.addListener(_usernameListen);
+    _passwordFilter.addListener(_passwordListen);
   }
 
-  String? _fieldValidator(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Field can\'t be empty';
+  _addUser() async {
+    String message = "";
+    bool isRegistered = false;
+    User newUser = User(username: username, password: password);
+
+    var index = box.length;
+    for (var i = 0; i < index; i++) {
+      var user = box.getAt(i);
+      if (user.username == username) {
+        message = "Username is exist";
+        SnackBar snackBar = SnackBar(
+          content: Text(message),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        isRegistered = true;
+        setState(() {
+          isRegisterSuccess = false;
+        });
+        break;
+      }
     }
-    return null;
+
+    if (isRegistered == false) {
+      setState(() {
+        isRegisterSuccess = true;
+      });
+      box.add(newUser);
+      message = "Register success";
+      SnackBar snackBar = SnackBar(
+        content: Text(message),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      Navigator.of(context).pop();
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) {
+          return LoginPage();
+        }),
+        (route) => false,
+      );
+    }
   }
 
   void _usernameListen() {
@@ -59,17 +86,40 @@ class _LoginPageState extends State<RegisterPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Get reference to an already opened box
+    box = Hive.box('userBox');
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(
-          title: Text("Register Page"),
-        ),
         body: Column(children: [
           _logo(),
           _usernameField(),
           _passwordField(),
-          _loginButton(context),
+          _registerButton(context),
+          Padding(
+            padding: EdgeInsets.all(8.0),
+            child: GestureDetector(
+                onTap: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) {
+                      return LoginPage();
+                    }),
+                    (route) => false,
+                  );
+                },
+                child: Text(
+                  "Sudah punya akun? login disini",
+                  style: TextStyle(
+                      decoration: TextDecoration.underline,
+                      color: Color.fromARGB(255, 16, 74, 121)),
+                )),
+          ),
         ]),
       ),
     );
@@ -81,8 +131,10 @@ class _LoginPageState extends State<RegisterPage> {
       child: Column(children: <Widget>[
         Container(
           padding: EdgeInsets.only(top: 96),
-          child: FlutterLogo(
-            size: 50,
+          child: Image.asset(
+            'logo.png',
+            width: MediaQuery.of(context).size.width / 3,
+            height: MediaQuery.of(context).size.height / 3,
           ),
         ),
       ]),
@@ -94,18 +146,14 @@ class _LoginPageState extends State<RegisterPage> {
       padding: EdgeInsets.only(left: 48, right: 48, bottom: 10),
       child: TextFormField(
         enabled: true,
-        // onChanged: (value) {
-        //   username = value;
-        // },
         controller: _usernameFilter,
-        validator: _fieldValidator,
         decoration: InputDecoration(
           hintText: 'Username',
           contentPadding: const EdgeInsets.all(8.0),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(8.0)),
-            borderSide:
-                BorderSide(color: (isRegisterSuccess) ? Colors.green : Colors.red),
+            borderSide: BorderSide(
+                color: (isRegisterSuccess) ? Colors.green : Colors.red),
           ),
         ),
       ),
@@ -117,26 +165,22 @@ class _LoginPageState extends State<RegisterPage> {
       padding: EdgeInsets.only(left: 48, right: 48, bottom: 10),
       child: TextFormField(
         enabled: true,
-        // onChanged: (value) {
-        //   password = value;
-        // },
         obscureText: true,
         controller: _passwordFilter,
-        validator: _fieldValidator,
         decoration: InputDecoration(
           hintText: 'Password',
           contentPadding: const EdgeInsets.all(8.0),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(8.0)),
-            borderSide:
-                BorderSide(color: (isRegisterSuccess) ? Colors.green : Colors.red),
+            borderSide: BorderSide(
+                color: (isRegisterSuccess) ? Colors.green : Colors.red),
           ),
         ),
       ),
     );
   }
 
-  Widget _loginButton(BuildContext context) {
+  Widget _registerButton(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(left: 48, right: 48, bottom: 10),
       width: MediaQuery.of(context).size.width,
@@ -146,24 +190,18 @@ class _LoginPageState extends State<RegisterPage> {
           onPrimary: Colors.white,
         ),
         onPressed: () {
-          String text = "";
-        if (_userFormKey.currentState!.validate()) {
+          if (username != "" || password != "") {
             _addUser();
-            Navigator.of(context).pop();
-            isRegisterSuccess = true;
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) {
-              return LoginPage();
-            }),
-            (route) => false,
+          } else {
+            setState(() {
+              isRegisterSuccess = false;
+            });
+            SnackBar snackBar = SnackBar(
+              content: Text("Username or password can't be empty"),
             );
-        }
-        SnackBar snackBar = SnackBar(
-            content: Text(text),
-          );
 
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(12.0),
